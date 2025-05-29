@@ -3,38 +3,39 @@ import pandas as pd
 import pickle
 import json
 from sklearn.metrics import accuracy_score, precision_score, recall_score, roc_auc_score
-import logging
 import mlflow
 import mlflow.sklearn
 import dagshub
 import os
-from src.logger import logging
+import sys
+from dotenv import load_dotenv
 
+# Add the project root to Python path
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(project_root)
 
-# Below code block is for production use
-# -------------------------------------------------------------------------------------
-# Set up DagsHub credentials for MLflow tracking
-dagshub_token = os.getenv("CAPSTONE_TEST")
-if not dagshub_token:
-    raise EnvironmentError("CAPSTONE_TEST environment variable is not set")
+try:
+    from src.logger import logging
+except ImportError:
+    # Fallback to relative imports
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+    from src.logger import logging
 
-os.environ["MLFLOW_TRACKING_USERNAME"] = dagshub_token
-os.environ["MLFLOW_TRACKING_PASSWORD"] = dagshub_token
+# -------------------- 🔐 Secure Environment Setup --------------------
+load_dotenv()  # Load environment variables from .env
 
-dagshub_url = "https://dagshub.com"
-repo_owner = "vikashdas770"
-repo_name = "YT-Capstone-Project"
+# Set up MLflow tracking credentials
+os.environ["MLFLOW_TRACKING_USERNAME"] = os.getenv("MLFLOW_TRACKING_USERNAME")
+os.environ["MLFLOW_TRACKING_PASSWORD"] = os.getenv("MLFLOW_TRACKING_PASSWORD")
+mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI"))
 
-# Set up MLflow tracking URI
-mlflow.set_tracking_uri(f'{dagshub_url}/{repo_owner}/{repo_name}.mlflow')
-# -------------------------------------------------------------------------------------
-
-# Below code block is for local use
-# -------------------------------------------------------------------------------------
-# mlflow.set_tracking_uri('https://dagshub.com/vikashdas770/YT-Capstone-Project.mlflow')
-# dagshub.init(repo_owner='vikashdas770', repo_name='YT-Capstone-Project', mlflow=True)
-# -------------------------------------------------------------------------------------
-
+# Optional: Initialize DagsHub tracking (if using DagsHub)
+dagshub.init(
+    repo_owner=os.getenv("DAGSHUB_REPO_OWNER"),
+    repo_name=os.getenv("DAGSHUB_REPO_NAME"),
+    mlflow=True
+)
+# ---------------------------------------------------------------------
 
 def load_model(file_path: str):
     """Load the trained model from a file."""
@@ -109,34 +110,33 @@ def save_model_info(run_id: str, model_path: str, file_path: str) -> None:
 
 def main():
     mlflow.set_experiment("my-dvc-pipeline")
-    with mlflow.start_run() as run:  # Start an MLflow run
+    with mlflow.start_run() as run:
         try:
             clf = load_model('./models/model.pkl')
             test_data = load_data('./data/processed/test_bow.csv')
-            
+
             X_test = test_data.iloc[:, :-1].values
             y_test = test_data.iloc[:, -1].values
 
             metrics = evaluate_model(clf, X_test, y_test)
-            
             save_metrics(metrics, 'reports/metrics.json')
-            
+
             # Log metrics to MLflow
             for metric_name, metric_value in metrics.items():
                 mlflow.log_metric(metric_name, metric_value)
-            
+
             # Log model parameters to MLflow
             if hasattr(clf, 'get_params'):
                 params = clf.get_params()
                 for param_name, param_value in params.items():
                     mlflow.log_param(param_name, param_value)
-            
+
             # Log model to MLflow
             mlflow.sklearn.log_model(clf, "model")
-            
-            # Save model info
+
+            # Save model info for tracking
             save_model_info(run.info.run_id, "model", 'reports/experiment_info.json')
-            
+
             # Log the metrics file to MLflow
             mlflow.log_artifact('reports/metrics.json')
 

@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request
 import mlflow
+from mlflow.exceptions import MlflowException
 import pickle
 import os
 import pandas as pd
@@ -10,7 +11,7 @@ from nltk.corpus import stopwords
 import string
 import re
 import dagshub
-
+from dotenv import load_dotenv
 import warnings
 warnings.simplefilter("ignore", UserWarning)
 warnings.filterwarnings("ignore")
@@ -67,28 +68,25 @@ def normalize_text(text):
 
     return text
 
-# Below code block is for local use
-# -------------------------------------------------------------------------------------
-# mlflow.set_tracking_uri('https://dagshub.com/vikashdas770/YT-Capstone-Project.mlflow')
-# dagshub.init(repo_owner='vikashdas770', repo_name='YT-Capstone-Project', mlflow=True)
-# -------------------------------------------------------------------------------------
-
 # Below code block is for production use
 # -------------------------------------------------------------------------------------
-# Set up DagsHub credentials for MLflow tracking
-dagshub_token = os.getenv("CAPSTONE_TEST")
-if not dagshub_token:
-    raise EnvironmentError("CAPSTONE_TEST environment variable is not set")
+# -------------------- 🔐 Secure Environment Setup --------------------
+load_dotenv()  # Load environment variables from .env
 
-os.environ["MLFLOW_TRACKING_USERNAME"] = dagshub_token
-os.environ["MLFLOW_TRACKING_PASSWORD"] = dagshub_token
+# Set up MLflow tracking credentials
+os.environ["MLFLOW_TRACKING_USERNAME"] = os.getenv("MLFLOW_TRACKING_USERNAME")
+os.environ["MLFLOW_TRACKING_PASSWORD"] = os.getenv("MLFLOW_TRACKING_PASSWORD")
+mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI"))
 
-dagshub_url = "https://dagshub.com"
-repo_owner = "vikashdas770"
-repo_name = "YT-Capstone-Project"
-# Set up MLflow tracking URI
-mlflow.set_tracking_uri(f'{dagshub_url}/{repo_owner}/{repo_name}.mlflow')
-# -------------------------------------------------------------------------------------
+# Optional: Initialize DagsHub tracking (if using DagsHub)
+dagshub.init(
+    repo_owner=os.getenv("DAGSHUB_REPO_OWNER"),
+    repo_name=os.getenv("DAGSHUB_REPO_NAME"),
+    mlflow=True
+)
+
+# # -------------------------------------------------------------------------------------
+
 
 
 # Initialize Flask app
@@ -113,19 +111,39 @@ PREDICTION_COUNT = Counter(
 # ------------------------------------------------------------------------------------------
 # Model and vectorizer setup
 model_name = "my_model"
-def get_latest_model_version(model_name):
+
+def get_latest_model_version(model_name, desired_stage="Staging"):
+    """Fetch the latest model version from a given stage (e.g. 'Staging' or 'Production')."""
     client = mlflow.MlflowClient()
-    latest_version = client.get_latest_versions(model_name, stages=["Production"])
-    if not latest_version:
-        latest_version = client.get_latest_versions(model_name, stages=["None"])
-    return latest_version[0].version if latest_version else None
+    # Fetch all versions for the model
+    versions = client.search_model_versions(f"name='{model_name}'")
+    if not versions:
+        raise Exception(f"No versions found for model '{model_name}'")
 
-model_version = get_latest_model_version(model_name)
-model_uri = f'models:/{model_name}/{model_version}'
-print(f"Fetching model from: {model_uri}")
-model = mlflow.pyfunc.load_model(model_uri)
-vectorizer = pickle.load(open('models/vectorizer.pkl', 'rb'))
+    # Filter by desired stage
+    filtered = [v for v in versions if v.current_stage == desired_stage]
+    if not filtered:
+        raise Exception(f"No model version found in stage '{desired_stage}' for model '{model_name}'")
+    
+    # Sort based on version number (converted to int)
+    latest = max(filtered, key=lambda v: int(v.version))
+    return latest.version
 
+try:
+    # Change desired_stage below if needed (e.g., "Production")
+    model_version = get_latest_model_version(model_name, desired_stage="Staging")
+    model_uri = f"models:/{model_name}/{model_version}"
+    print(f"✅ Fetching model from: {model_uri}")
+    model = mlflow.pyfunc.load_model(model_uri)
+except Exception as e:
+    print(f"❌ Failed to load model: {e}")
+    model = None
+
+try:
+    vectorizer = pickle.load(open('models/vectorizer.pkl', 'rb'))
+except Exception as e:
+    print(f"❌ Failed to load vectorizer: {e}")
+    vectorizer = None
 # Routes
 @app.route("/")
 def home():

@@ -3,37 +3,42 @@
 import json
 import mlflow
 import logging
-from src.logger import logging
 import os
 import dagshub
-
+import sys
 import warnings
 warnings.simplefilter("ignore", UserWarning)
 warnings.filterwarnings("ignore")
+from dotenv import load_dotenv
+
+# Add the project root to Python path
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(project_root)
+
+try:
+    from src.logger import logging
+except ImportError:
+    # Fallback to relative imports
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+    from src.logger import logging
 
 # Below code block is for production use
-# -------------------------------------------------------------------------------------
-# Set up DagsHub credentials for MLflow tracking
-dagshub_token = os.getenv("CAPSTONE_TEST")
-if not dagshub_token:
-    raise EnvironmentError("CAPSTONE_TEST environment variable is not set")
+# -------------------- 🔐 Secure Environment Setup --------------------
+load_dotenv()  # Load environment variables from .env
 
-os.environ["MLFLOW_TRACKING_USERNAME"] = dagshub_token
-os.environ["MLFLOW_TRACKING_PASSWORD"] = dagshub_token
+# Set up MLflow tracking credentials
+os.environ["MLFLOW_TRACKING_USERNAME"] = os.getenv("MLFLOW_TRACKING_USERNAME")
+os.environ["MLFLOW_TRACKING_PASSWORD"] = os.getenv("MLFLOW_TRACKING_PASSWORD")
+mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI"))
 
-dagshub_url = "https://dagshub.com"
-repo_owner = "vikashdas770"
-repo_name = "YT-Capstone-Project"
-# Set up MLflow tracking URI
-mlflow.set_tracking_uri(f'{dagshub_url}/{repo_owner}/{repo_name}.mlflow')
-# -------------------------------------------------------------------------------------
+# Optional: Initialize DagsHub tracking (if using DagsHub)
+dagshub.init(
+    repo_owner=os.getenv("DAGSHUB_REPO_OWNER"),
+    repo_name=os.getenv("DAGSHUB_REPO_NAME"),
+    mlflow=True
+)
 
-
-# Below code block is for local use
-# -------------------------------------------------------------------------------------
-# mlflow.set_tracking_uri('https://dagshub.com/vikashdas770/YT-Capstone-Project.mlflow')
-# dagshub.init(repo_owner='vikashdas770', repo_name='YT-Capstone-Project', mlflow=True)
-# -------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------
 
 
 def load_model_info(file_path: str) -> dict:
@@ -66,6 +71,7 @@ def register_model(model_name: str, model_info: dict):
             stage="Staging"
         )
         
+        
         logging.debug(f'Model {model_name} version {model_version.version} registered and transitioned to Staging.')
     except Exception as e:
         logging.error('Error during model registration: %s', e)
@@ -83,5 +89,4 @@ def main():
         print(f"Error: {e}")
 
 if __name__ == '__main__':
-    main()
-
+    main()  

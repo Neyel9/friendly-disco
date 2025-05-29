@@ -2,10 +2,21 @@
 import numpy as np
 import pandas as pd
 import os
+import sys
 from sklearn.feature_extraction.text import CountVectorizer
 import yaml
-from src.logger import logging
 import pickle
+
+# Add the project root to Python path
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(project_root)
+
+try:
+    from src.logger import logging
+except ImportError:
+    # Fallback to relative imports
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+    from src.logger import logging
 
 
 def load_params(params_path: str) -> dict:
@@ -81,7 +92,7 @@ def main():
     try:
         params = load_params('params.yaml')
         max_features = params['feature_engineering']['max_features']
-        # max_features = 20
+        
 
         train_data = load_data('./data/interim/train_processed.csv')
         test_data = load_data('./data/interim/test_processed.csv')

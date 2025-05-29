@@ -5,11 +5,11 @@ from src.logger import logging
 from io import StringIO
 
 # # Configure logging
-# logging.basicConfig(level=logging.INFO)
-# logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class s3_operations:
-    def __init__(self, bucket_name, aws_access_key, aws_secret_key, region_name="us-east-1"):
+    def __init__(self, bucket_name, aws_access_key, aws_secret_key, region_name="eu-north-1"):
         """
         Initialize the s3_operations class with AWS credentials and S3 bucket details.
         """
@@ -38,16 +38,3 @@ class s3_operations:
             logging.exception(f"❌ Failed to fetch '{file_key}' from S3: {e}")
             return None
 
-# Example usage
-# if __name__ == "__main__":
-#     # Replace these with your actual AWS credentials and S3 details
-#     BUCKET_NAME = "bucket-name"
-#     AWS_ACCESS_KEY = "AWS_ACCESS_KEY"
-#     AWS_SECRET_KEY = "AWS_SECRET_KEY"
-#     FILE_KEY = "data.csv"  # Path inside S3 bucket
-
-#     data_ingestion = s3_operations(BUCKET_NAME, AWS_ACCESS_KEY, AWS_SECRET_KEY)
-#     df = data_ingestion.fetch_file_from_s3(FILE_KEY)
-
-#     if df is not None:
-#         print(f"Data fetched with {len(df)} records..")  # Display first few rows of the fetched DataFrame

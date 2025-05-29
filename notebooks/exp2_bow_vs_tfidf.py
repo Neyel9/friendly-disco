@@ -4,7 +4,7 @@ import re
 import string
 import pandas as pd
 pd.set_option('future.no_silent_downcasting', True)
-
+from dotenv import load_dotenv
 import numpy as np
 import mlflow
 import mlflow.sklearn
@@ -28,9 +28,9 @@ warnings.filterwarnings("ignore")
 CONFIG = {
     "data_path": "notebooks/data.csv",
     "test_size": 0.2,
-    "mlflow_tracking_uri": "https://dagshub.com/vikashdas770/YT-Capstone-Project.mlflow",
-    "dagshub_repo_owner": "vikashdas770",
-    "dagshub_repo_name": "YT-Capstone-Project",
+    "mlflow_tracking_uri": os.getenv("MLFLOW_TRACKING_URI"),
+    "dagshub_repo_owner": os.getenv("DAGSHUB_REPO_OWNER"),
+    "dagshub_repo_name": os.getenv("DAGSHUB_REPO_NAME"),
     "experiment_name": "Bow vs TfIdf"
 }
 
