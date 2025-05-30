@@ -67,7 +67,13 @@ friendly-disco/
    pip install -r requirements.txt
    ```
 
-4. **Set up environment variables**:
+4. **Install DVC**:
+
+   ```bash
+   pip install dvc
+   ```
+
+5. **Set up environment variables**:
 
    Create a `.env` file in the root directory and add the following:
 
