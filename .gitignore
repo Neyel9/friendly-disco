@@ -172,4 +172,7 @@ cython_debug/
 
 local_s3/
 models/
-data_local/
+data/raw/
+data/processed/
+data/interim/
+data/external/
