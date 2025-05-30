@@ -1,9 +1,19 @@
 import boto3
 import pandas as pd
-import logging
 from src.logger import logging
 from io import StringIO
+# Add the project root to Python path
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(project_root)
 
+try:
+    from src.logger import logging
+    from src.connections import s3_connection
+except ImportError:
+    # Fallback to relative imports
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+    from src.logger import logging
+    from src.connections import s3_connection
 # # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
