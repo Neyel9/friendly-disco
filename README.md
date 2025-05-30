@@ -70,7 +70,7 @@ friendly-disco/
 4. **Install DVC**:
 
    ```bash
-   pip ins
+   pip install dvc
    ```
 
 5. **Set up environment variables**:
@@ -94,6 +94,16 @@ friendly-disco/
    dvc init
    dvc pull
    ```
+
+**Troubleshooting DagsHub Authentication:**
+
+If you are encountering authentication errors with DagsHub, please try the following:
+
+*   **Verify your DagsHub credentials:** Make sure that the `MLFLOW_TRACKING_USERNAME` and `MLFLOW_TRACKING_PASSWORD` environment variables are set correctly in your `.env` file.
+*   **Check your DagsHub token:** Ensure that your DagsHub access token is valid and has the necessary permissions. You can regenerate your token in your DagsHub settings under "Tokens".
+*   **Authenticate with DagsHub using the CLI:** Try running `dags init` in your terminal to authenticate with DagsHub using the command-line interface.
+*   **Check your network connection:** Make sure that you have a stable network connection and that you are able to connect to DagsHub.
+*   **Restart your terminal:** Sometimes, restarting your terminal can help to resolve authentication issues.
 
 ## 📈 Usage
 

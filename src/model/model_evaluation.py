@@ -20,11 +20,10 @@ except ImportError:
     from src.logger import logging
 
 # -------------------- 🔐 Secure Environment Setup --------------------
-load_dotenv()  # Load local .env (ignored in CI, but helpful locally)
+load_dotenv()
 
 # Read credentials from environment
 mlflow_username = os.getenv("MLFLOW_TRACKING_USERNAME")
-mlflow_password = os.getenv("MLFLOW_TRACKING_PASSWORD")
 mlflow_uri = os.getenv("MLFLOW_TRACKING_URI")
 dagshub_owner = os.getenv("DAGSHUB_REPO_OWNER")
 dagshub_repo = os.getenv("DAGSHUB_REPO_NAME")
@@ -34,10 +33,10 @@ dagshub_token = os.getenv("DAGSHUB_TOKEN")
 missing_vars = []
 for var_name, var in {
     "MLFLOW_TRACKING_USERNAME": mlflow_username,
-    "MLFLOW_TRACKING_PASSWORD": mlflow_password,
     "MLFLOW_TRACKING_URI": mlflow_uri,
     "DAGSHUB_REPO_OWNER": dagshub_owner,
-    "DAGSHUB_REPO_NAME": dagshub_repo
+    "DAGSHUB_REPO_NAME": dagshub_repo,
+    "DAGSHUB_TOKEN": dagshub_token
 }.items():
     if not var:
         missing_vars.append(var_name)
@@ -45,23 +44,19 @@ for var_name, var in {
 if missing_vars:
     raise EnvironmentError(f"❌ Missing required environment variables: {', '.join(missing_vars)}")
 
-# Set credentials for MLflow
-os.environ["MLFLOW_TRACKING_USERNAME"] = mlflow_username
-os.environ["MLFLOW_TRACKING_PASSWORD"] = mlflow_password
+# Patch MLflow to use Bearer token for DagsHub
+from mlflow.utils.rest_utils import http_request_kwargs
+http_request_kwargs["headers"] = {"Authorization": f"Bearer {dagshub_token}"}
+
+# Set MLflow URI
 mlflow.set_tracking_uri(mlflow_uri)
 
-# Initialize DagsHub with proper authentication
+# Initialize DagsHub
 try:
     import dagshub
-    if dagshub_token:
-        # Use token-based authentication for CI/CD
-        os.environ["DAGSHUB_TOKEN"] = dagshub_token
-        dagshub.init(repo_owner=dagshub_owner, repo_name=dagshub_repo, mlflow=True)
-        logging.info("DagsHub initialized with token authentication")
-    else:
-        # Try to initialize without explicit token (for local development)
-        dagshub.init(repo_owner=dagshub_owner, repo_name=dagshub_repo, mlflow=True)
-        logging.info("DagsHub initialized")
+    os.environ["DAGSHUB_TOKEN"] = dagshub_token
+    dagshub.init(repo_owner=dagshub_owner, repo_name=dagshub_repo, mlflow=True)
+    logging.info("DagsHub initialized with token authentication")
 except Exception as e:
     logging.warning("Failed to initialize DagsHub: %s. Continuing with MLflow only.", e)
 
@@ -116,9 +111,7 @@ def evaluate_model(clf, X_test: np.ndarray, y_test: np.ndarray) -> dict:
 
 def save_metrics(metrics: dict, file_path: str) -> None:
     try:
-        # Ensure the reports directory exists
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
-        
         with open(file_path, 'w') as file:
             json.dump(metrics, file, indent=4)
         logging.info('Metrics saved to %s', file_path)
@@ -128,9 +121,7 @@ def save_metrics(metrics: dict, file_path: str) -> None:
 
 def save_model_info(run_id: str, model_path: str, file_path: str) -> None:
     try:
-        # Ensure the reports directory exists
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
-        
         model_info = {'run_id': run_id, 'model_path': model_path}
         with open(file_path, 'w') as file:
             json.dump(model_info, file, indent=4)
