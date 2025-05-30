@@ -5,7 +5,6 @@ import json
 from sklearn.metrics import accuracy_score, precision_score, recall_score, roc_auc_score
 import mlflow
 import mlflow.sklearn
-import dagshub
 import os
 import sys
 from dotenv import load_dotenv
@@ -29,6 +28,7 @@ mlflow_password = os.getenv("MLFLOW_TRACKING_PASSWORD")
 mlflow_uri = os.getenv("MLFLOW_TRACKING_URI")
 dagshub_owner = os.getenv("DAGSHUB_REPO_OWNER")
 dagshub_repo = os.getenv("DAGSHUB_REPO_NAME")
+dagshub_token = os.getenv("DAGSHUB_TOKEN")
 
 # Validate all required environment variables
 missing_vars = []
@@ -50,8 +50,20 @@ os.environ["MLFLOW_TRACKING_USERNAME"] = mlflow_username
 os.environ["MLFLOW_TRACKING_PASSWORD"] = mlflow_password
 mlflow.set_tracking_uri(mlflow_uri)
 
-# Optional: Initialize DagsHub for MLflow tracking
-dagshub.init(repo_owner=dagshub_owner, repo_name=dagshub_repo, mlflow=True)
+# Initialize DagsHub with proper authentication
+try:
+    import dagshub
+    if dagshub_token:
+        # Use token-based authentication for CI/CD
+        os.environ["DAGSHUB_TOKEN"] = dagshub_token
+        dagshub.init(repo_owner=dagshub_owner, repo_name=dagshub_repo, mlflow=True)
+        logging.info("DagsHub initialized with token authentication")
+    else:
+        # Try to initialize without explicit token (for local development)
+        dagshub.init(repo_owner=dagshub_owner, repo_name=dagshub_repo, mlflow=True)
+        logging.info("DagsHub initialized")
+except Exception as e:
+    logging.warning("Failed to initialize DagsHub: %s. Continuing with MLflow only.", e)
 
 # ---------------------------------------------------------------------
 
@@ -104,6 +116,9 @@ def evaluate_model(clf, X_test: np.ndarray, y_test: np.ndarray) -> dict:
 
 def save_metrics(metrics: dict, file_path: str) -> None:
     try:
+        # Ensure the reports directory exists
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        
         with open(file_path, 'w') as file:
             json.dump(metrics, file, indent=4)
         logging.info('Metrics saved to %s', file_path)
@@ -113,6 +128,9 @@ def save_metrics(metrics: dict, file_path: str) -> None:
 
 def save_model_info(run_id: str, model_path: str, file_path: str) -> None:
     try:
+        # Ensure the reports directory exists
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        
         model_info = {'run_id': run_id, 'model_path': model_path}
         with open(file_path, 'w') as file:
             json.dump(model_info, file, indent=4)
