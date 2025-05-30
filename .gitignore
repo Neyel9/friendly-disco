@@ -169,8 +169,7 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
-cred.txt
+
 local_s3/
-notebooks/
 models/
-data/
+data_local/
