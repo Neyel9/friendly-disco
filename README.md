@@ -70,7 +70,7 @@ friendly-disco/
 4. **Install DVC**:
 
    ```bash
-   pip install dvc
+   pip ins
    ```
 
 5. **Set up environment variables**:
