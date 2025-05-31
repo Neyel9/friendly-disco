@@ -4,6 +4,7 @@ from mlflow.exceptions import MlflowException
 import pickle
 import os
 import pandas as pd
+import numpy as np
 from prometheus_client import Counter, Histogram, generate_latest, CollectorRegistry, CONTENT_TYPE_LATEST
 import time
 from nltk.stem import WordNetLemmatizer
@@ -73,17 +74,48 @@ def normalize_text(text):
 # -------------------- 🔐 Secure Environment Setup --------------------
 load_dotenv()  # Load environment variables from .env
 
-# Set up MLflow tracking credentials
-os.environ["MLFLOW_TRACKING_USERNAME"] = os.getenv("MLFLOW_TRACKING_USERNAME")
-os.environ["MLFLOW_TRACKING_PASSWORD"] = os.getenv("MLFLOW_TRACKING_PASSWORD")
-mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI"))
+# Read credentials from environment
+mlflow_uri = os.getenv("MLFLOW_TRACKING_URI")
+dagshub_owner = os.getenv("DAGSHUB_REPO_OWNER")
+dagshub_repo = os.getenv("DAGSHUB_REPO_NAME")
+dagshub_token = os.getenv("DAGSHUB_TOKEN")
 
-# Optional: Initialize DagsHub tracking (if using DagsHub)
-dagshub.init(
-    repo_owner=os.getenv("DAGSHUB_REPO_OWNER"),
-    repo_name=os.getenv("DAGSHUB_REPO_NAME"),
-    mlflow=True
-)
+# Validate required environment variables (only check if not in test mode)
+if not os.getenv("TESTING"):
+    missing_vars = []
+    for var_name, var in {
+        "MLFLOW_TRACKING_URI": mlflow_uri,
+        "DAGSHUB_REPO_OWNER": dagshub_owner,
+        "DAGSHUB_REPO_NAME": dagshub_repo,
+        "DAGSHUB_TOKEN": dagshub_token
+    }.items():
+        if not var:
+            missing_vars.append(var_name)
+
+    if missing_vars:
+        print(f"⚠️  Warning: Missing environment variables: {', '.join(missing_vars)}")
+        print("🔧 Flask app will run in local mode without MLflow integration")
+
+# Set up MLflow authentication for DagsHub (if token is available)
+if dagshub_token:
+    # DagsHub uses token-based authentication where the token serves as both username and password
+    os.environ["MLFLOW_TRACKING_USERNAME"] = dagshub_token
+    os.environ["MLFLOW_TRACKING_PASSWORD"] = dagshub_token
+
+# Set MLflow URI (if available)
+if mlflow_uri:
+    mlflow.set_tracking_uri(mlflow_uri)
+
+# Optional: Initialize DagsHub tracking (if credentials are available)
+if dagshub_owner and dagshub_repo and dagshub_token:
+    try:
+        os.environ["DAGSHUB_TOKEN"] = dagshub_token
+        dagshub.init(repo_owner=dagshub_owner, repo_name=dagshub_repo, mlflow=True)
+        print("✅ DagsHub initialized with token authentication")
+    except Exception as e:
+        print(f"⚠️  Warning: Failed to initialize DagsHub: {e}. Continuing without DagsHub integration.")
+else:
+    print("ℹ️  DagsHub credentials not found. Running in local mode.")
 
 # # -------------------------------------------------------------------------------------
 

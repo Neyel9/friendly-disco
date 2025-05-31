@@ -79,8 +79,7 @@ friendly-disco/
 
    ```env
    MLFLOW_TRACKING_URI=your_tracking_uri_here
-   MLFLOW_TRACKING_USERNAME=your_username
-   MLFLOW_TRACKING_PASSWORD=your_token
+   DAGSHUB_TOKEN=your_dagshub_token
    DAGSHUB_REPO_OWNER=Sarthaksina
    DAGSHUB_REPO_NAME=friendly-disco
    AWS_ACCESS_KEY_ID=your_aws_access_key
@@ -99,11 +98,13 @@ friendly-disco/
 
 If you are encountering authentication errors with DagsHub, please try the following:
 
-*   **Verify your DagsHub credentials:** Make sure that the `MLFLOW_TRACKING_USERNAME` and `MLFLOW_TRACKING_PASSWORD` environment variables are set correctly in your `.env` file.
-*   **Check your DagsHub token:** Ensure that your DagsHub access token is valid and has the necessary permissions. You can regenerate your token in your DagsHub settings under "Tokens".
-*   **Authenticate with DagsHub using the CLI:** Try running `dags init` in your terminal to authenticate with DagsHub using the command-line interface.
+*   **Verify your DagsHub token:** Make sure that the `DAGSHUB_TOKEN` environment variable is set correctly in your `.env` file with your DagsHub access token.
+*   **Check your DagsHub token validity:** Ensure that your DagsHub access token is valid and has the necessary permissions. You can regenerate your token in your DagsHub settings under "Tokens".
+*   **Verify repository details:** Ensure that `DAGSHUB_REPO_OWNER` and `DAGSHUB_REPO_NAME` match your actual DagsHub repository.
 *   **Check your network connection:** Make sure that you have a stable network connection and that you are able to connect to DagsHub.
 *   **Restart your terminal:** Sometimes, restarting your terminal can help to resolve authentication issues.
+
+**Note:** This project now uses token-based authentication with DagsHub. The old username/password authentication method has been replaced with the more secure `DAGSHUB_TOKEN` approach.
 
 ## 📈 Usage
 

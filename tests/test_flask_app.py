@@ -1,10 +1,17 @@
 import unittest
+import os
+
+# Set testing mode before importing the Flask app
+os.environ["TESTING"] = "true"
+
 from flask_app.app import app
 
 class FlaskAppTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        # Set up test client
+        app.config['TESTING'] = True
         cls.client = app.test_client()
 
     def test_home_page(self):
