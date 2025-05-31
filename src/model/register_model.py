@@ -25,16 +25,15 @@ except ImportError:
 load_dotenv()  # Load environment variables from .env
 
 # Read credentials from environment
-mlflow_username = os.getenv("MLFLOW_TRACKING_USERNAME")
 mlflow_uri = os.getenv("MLFLOW_TRACKING_URI")
 dagshub_owner = os.getenv("DAGSHUB_REPO_OWNER")
 dagshub_repo = os.getenv("DAGSHUB_REPO_NAME")
 dagshub_token = os.getenv("DAGSHUB_TOKEN")
 
 # Validate all required environment variables
+# Note: MLFLOW_TRACKING_USERNAME and MLFLOW_TRACKING_PASSWORD will be set programmatically using the DagsHub token
 missing_vars = []
 for var_name, var in {
-    "MLFLOW_TRACKING_USERNAME": mlflow_username,
     "MLFLOW_TRACKING_URI": mlflow_uri,
     "DAGSHUB_REPO_OWNER": dagshub_owner,
     "DAGSHUB_REPO_NAME": dagshub_repo,
@@ -46,9 +45,10 @@ for var_name, var in {
 if missing_vars:
     raise EnvironmentError(f"❌ Missing required environment variables: {', '.join(missing_vars)}")
 
-# Patch MLflow to use Bearer token for DagsHub
-from mlflow.utils.rest_utils import http_request_kwargs
-http_request_kwargs["headers"] = {"Authorization": f"Bearer {dagshub_token}"}
+# Set up MLflow authentication for DagsHub
+# DagsHub uses token-based authentication where the token serves as both username and password
+os.environ["MLFLOW_TRACKING_USERNAME"] = dagshub_token
+os.environ["MLFLOW_TRACKING_PASSWORD"] = dagshub_token
 
 # Set MLflow URI
 mlflow.set_tracking_uri(mlflow_uri)
