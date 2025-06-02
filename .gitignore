@@ -176,3 +176,5 @@ data/raw/
 data/processed/
 data/interim/
 data/external/
+docker.env/
+docker.env

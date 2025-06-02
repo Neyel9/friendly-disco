@@ -190,24 +190,68 @@ def predict():
     REQUEST_COUNT.labels(method="POST", endpoint="/predict").inc()
     start_time = time.time()
 
-    text = request.form["text"]
-    # Clean text
-    text = normalize_text(text)
-    # Convert to features
-    features = vectorizer.transform([text])
-    features_df = pd.DataFrame(features.toarray(), columns=[str(i) for i in range(features.shape[1])])
+    try:
+        # Check if model and vectorizer are available
+        if model is None:
+            error_msg = "❌ Model not available. Please check MLflow connection and ensure a model is registered in 'Staging' stage."
+            print(error_msg)
+            return render_template("index.html", result=None, error=error_msg)
 
-    # Predict
-    result = model.predict(features_df)
-    prediction = result[0]
+        if vectorizer is None:
+            error_msg = "❌ Vectorizer not available. Please check if vectorizer.pkl exists."
+            print(error_msg)
+            return render_template("index.html", result=None, error=error_msg)
 
-    # Increment prediction count metric
-    PREDICTION_COUNT.labels(prediction=str(prediction)).inc()
+        text = request.form["text"]
 
-    # Measure latency
-    REQUEST_LATENCY.labels(endpoint="/predict").observe(time.time() - start_time)
+        # Validate input
+        if not text or text.strip() == "":
+            error_msg = "⚠️ Please enter some text to analyze."
+            return render_template("index.html", result=None, error=error_msg)
 
-    return render_template("index.html", result=prediction)
+        # Clean text
+        text = normalize_text(text)
+
+        # Convert to features
+        features = vectorizer.transform([text])
+        features_df = pd.DataFrame(features.toarray(), columns=[str(i) for i in range(features.shape[1])])
+
+        # Predict
+        result = model.predict(features_df)
+        prediction = result[0]
+
+        # Increment prediction count metric
+        PREDICTION_COUNT.labels(prediction=str(prediction)).inc()
+
+        # Measure latency
+        REQUEST_LATENCY.labels(endpoint="/predict").observe(time.time() - start_time)
+
+        return render_template("index.html", result=prediction, error=None)
+
+    except Exception as e:
+        error_msg = f"❌ Prediction failed: {str(e)}"
+        print(error_msg)
+        return render_template("index.html", result=None, error=error_msg)
+
+@app.route("/health", methods=["GET"])
+def health():
+    """Health check endpoint to diagnose system status."""
+    status = {
+        "status": "healthy",
+        "model_loaded": model is not None,
+        "vectorizer_loaded": vectorizer is not None,
+        "mlflow_uri": os.getenv("MLFLOW_TRACKING_URI", "Not set"),
+        "dagshub_token": "Set" if os.getenv("DAGSHUB_TOKEN") else "Not set",
+        "dagshub_owner": os.getenv("DAGSHUB_REPO_OWNER", "Not set"),
+        "dagshub_repo": os.getenv("DAGSHUB_REPO_NAME", "Not set")
+    }
+
+    if not model:
+        status["model_error"] = "Model failed to load from MLflow"
+    if not vectorizer:
+        status["vectorizer_error"] = "Vectorizer failed to load from local file"
+
+    return status, 200
 
 @app.route("/metrics", methods=["GET"])
 def metrics():
