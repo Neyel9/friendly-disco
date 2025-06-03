@@ -101,26 +101,67 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
         run: |
-          aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
-          aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
-          aws configure set region $AWS_REGION
-          aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+          echo "🔐 Configuring AWS credentials..."
+          echo "AWS_ACCESS_KEY_ID length: ${#AWS_ACCESS_KEY_ID}"
+          echo "AWS_REGION: $AWS_REGION"
+
+          # Check if required secrets are set
+          if [ -z "$AWS_ACCESS_KEY_ID" ]; then
+            echo "❌ AWS_ACCESS_KEY_ID is not set in GitHub secrets"
+            exit 1
+          fi
+
+          if [ -z "$AWS_SECRET_ACCESS_KEY" ]; then
+            echo "❌ AWS_SECRET_ACCESS_KEY is not set in GitHub secrets"
+            exit 1
+          fi
+
+          if [ -z "$AWS_REGION" ]; then
+            echo "❌ AWS_REGION is not set in GitHub secrets"
+            exit 1
+          fi
+
+          # Configure AWS CLI
+          aws configure set aws_access_key_id "$AWS_ACCESS_KEY_ID"
+          aws configure set aws_secret_access_key "$AWS_SECRET_ACCESS_KEY"
+          aws configure set region "$AWS_REGION"
+          aws configure set output json
+
+          # Verify AWS configuration
+          echo "✅ AWS CLI configured successfully"
+          aws sts get-caller-identity
+
+          # Login to ECR
+          echo "🔑 Logging into AWS ECR..."
+          aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com"
 
       - name: Build Docker image
+        if: success()
         run: |
+          echo "🔨 Building Docker image..."
           docker build -t ${{ secrets.ECR_REPOSITORY }}:latest .
+          echo "✅ Docker image built successfully"
 
       - name: Tag Docker image
+        if: success()
         run: |
+          echo "🏷️ Tagging Docker image for ECR..."
           docker tag ${{ secrets.ECR_REPOSITORY }}:latest \
             ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY }}:latest
+          echo "✅ Docker image tagged successfully"
 
-      - name: Check Docker authentication
-        run: docker info
+      - name: Verify Docker images
+        if: success()
+        run: |
+          echo "📋 Listing Docker images..."
+          docker images | grep ${{ secrets.ECR_REPOSITORY }}
 
       - name: Push Docker image to ECR
+        if: success()
         run: |
+          echo "🚀 Pushing Docker image to ECR..."
           docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY }}:latest
+          echo "✅ Docker image pushed to ECR successfully"
 
       # - name: Set up kubectl
       #   uses: azure/setup-kubectl@v3
