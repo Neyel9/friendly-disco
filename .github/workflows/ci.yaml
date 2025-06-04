@@ -163,25 +163,25 @@ jobs:
           docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY }}:latest
           echo "✅ Docker image pushed to ECR successfully"
 
-      # - name: Set up kubectl
-      #   uses: azure/setup-kubectl@v3
-      #   with:
-      #     version: 'latest'
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
 
-      # - name: Update kubeconfig
-      #   run: |
-      #     aws eks update-kubeconfig --region ${{ secrets.AWS_REGION }} --name flask-app-cluster
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --region ${{ secrets.AWS_REGION }} --name flask-app-cluster
 
-      # - name: Create Kubernetes Secret
-      #   run: |
-      #     kubectl create secret generic capstone-secret \
-      #       --from-literal=MLFLOW_TRACKING_URI=https://dagshub.com/${{ secrets.DAGSHUB_REPO_OWNER }}/${{ secrets.DAGSHUB_REPO_NAME }}.mlflow \
-      #       --from-literal=DAGSHUB_REPO_OWNER=${{ secrets.DAGSHUB_REPO_OWNER }} \
-      #       --from-literal=DAGSHUB_REPO_NAME=${{ secrets.DAGSHUB_REPO_NAME }} \
-      #       --from-literal=DAGSHUB_TOKEN=${{ secrets.FRIENDLY_DISCO }} \
-      #       --from-literal=CAPSTONE_TEST=${{ secrets.CAPSTONE_TEST }} \
-      #       --dry-run=client -o yaml | kubectl apply -f -
+      - name: Create Kubernetes Secret
+        run: |
+          kubectl create secret generic capstone-secret \
+            --from-literal=MLFLOW_TRACKING_URI=https://dagshub.com/${{ secrets.DAGSHUB_REPO_OWNER }}/${{ secrets.DAGSHUB_REPO_NAME }}.mlflow \
+            --from-literal=DAGSHUB_REPO_OWNER=${{ secrets.DAGSHUB_REPO_OWNER }} \
+            --from-literal=DAGSHUB_REPO_NAME=${{ secrets.DAGSHUB_REPO_NAME }} \
+            --from-literal=DAGSHUB_TOKEN=${{ secrets.FRIENDLY_DISCO }} \
+            --from-literal=CAPSTONE_TEST=${{ secrets.CAPSTONE_TEST }} \
+            --dry-run=client -o yaml | kubectl apply -f -
 
-      # - name: Deploy to EKS
-      #   run: |
-      #     kubectl apply -f deployment.yaml
+      - name: Deploy to EKS
+        run: |
+          kubectl apply -f deployment.yaml
