@@ -80,7 +80,7 @@ friendly-disco/
    ```env
    MLFLOW_TRACKING_URI=your_tracking_uri_here
    DAGSHUB_TOKEN=your_dagshub_token
-   DAGSHUB_REPO_OWNER=Sarthaksina
+   DAGSHUB_REPO_OWNER=repo_owner
    DAGSHUB_REPO_NAME=friendly-disco
    AWS_ACCESS_KEY_ID=your_aws_access_key
    AWS_SECRET_ACCESS_KEY=your_aws_secret_key
